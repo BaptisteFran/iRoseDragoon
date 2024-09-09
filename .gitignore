@@ -1,0 +1,19 @@
+# Ignore basic outputs
+bins
+objs
+libs
+
+# Server stuff we don't want on git
+Server/**/*.dll
+Server/**/*.pdb
+Server/**/*.map
+Server/**/*.txt
+Server/Server Data/3DDATA*
+
+# Visual studio files
+**/.vs
+**/*.suo
+**/*.user
+
+# Misc files
+**/*.log
