@@ -86,13 +86,13 @@ public  :
 
 	bool		FirstDSN (char *pszDSN, int lMax);
 	bool		NextDSN  (char *pszDSN, int lMax);
-	bool		RegisterDSN (char *szDSN, char *szDBName, char *szServerIP, char *szUser);
-	bool		ReigsterDsnIfNone (char *szDSN, char *szDBName, char *szServerIP, char *szUser);
+	bool		RegisterDSN (char const *szDSN, char const *szDBName, char const *szServerIP, char const *szUser);
+	bool		ReigsterDsnIfNone (char const *szDSN, char const *szDBName, char const *szServerIP, char const *szUser);
 
 	// inherited from classSQL
-	bool		Connect (char *szDSN, char *szUserName, char *szPassword);
+	bool		Connect (char const *szDSN, char const *szUserName, char const *szPassword) override;
 	void		Disconnect (void);
-	bool		SelectDB (char *szDBName)		{	return true;	}
+	bool		SelectDB (char const *szDBName)		{	return true;	}
 
 	const char* GetERROR();
 

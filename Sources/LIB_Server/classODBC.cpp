@@ -63,7 +63,7 @@ bool classODBC::NextDSN(char *pszDSN, int lMax)
 	return false;
 }
 
-bool classODBC::RegisterDSN (char *szDSN, char *szDBName, char *szServerIP, char *szUser)
+bool classODBC::RegisterDSN (char const *szDSN, char const *szDBName, char const *szServerIP, char const *szUser)
 {
 	DWORD dwRet;
 	HKEY hKey = NULL;
@@ -158,7 +158,7 @@ const char *classODBC::GetERROR(void)
 }
 
 //-------------------------------------------------------------------------------------------------
-bool classODBC::ReigsterDsnIfNone (char *szDSN, char *szDBName, char *szServerIP, char *szUser)
+bool classODBC::ReigsterDsnIfNone (char const *szDSN, char const *szDBName, char const *szServerIP, char const *szUser)
 {
     // Allocate the ODBC Environment and save handle.
 	m_RetCode = SQLAllocHandle (SQL_HANDLE_ENV, NULL, &m_hENV);
@@ -195,7 +195,7 @@ bool classODBC::ReigsterDsnIfNone (char *szDSN, char *szDBName, char *szServerIP
 }
 
 //-------------------------------------------------------------------------------------------------
-bool classODBC::Connect (char *szDSN, char *szUserName, char *szPassword)
+bool classODBC::Connect (char const* szDSN, char const* szUserName, char const* szPassword)
 {
     // Allocate the ODBC Environment and save handle.
 	m_RetCode = SQLAllocHandle (SQL_HANDLE_ENV, NULL, &m_hENV);

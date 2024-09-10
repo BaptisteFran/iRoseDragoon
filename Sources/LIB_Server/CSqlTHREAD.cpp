@@ -48,11 +48,18 @@ void CSqlTHREAD::Execute ()
 */
 
 //-------------------------------------------------------------------------------------------------
-bool CSqlTHREAD::Connect (BYTE btSqlTYPE, char *szServerIP, char *szUser, char *szPassword, char *szDBName, short nBindParamCNT, WORD wQueryBufferLEN)
+bool CSqlTHREAD::Connect(
+	BYTE btSqlTYPE,
+	char const *szServerIP,
+	char const *szUser,
+	char const *szPassword,
+	char const *szDBName,
+	short nBindParamCNT,
+	WORD wQueryBufferLEN)
 {
 	SAFE_DELETE( m_pSQL );
 
-	char *szDNSorIP;
+	char const *szDNSorIP;
 	switch( btSqlTYPE ) {
 		case USE_ODBC :
 		{

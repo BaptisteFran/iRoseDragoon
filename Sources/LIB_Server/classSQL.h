@@ -44,9 +44,9 @@ public   :
 	bool	GetNextRECORD ()	{	return this->Fetch();						}
 	char*	GetQueryBuffPTR ()	{	return m_pQueryBuff;						}
 
-	virtual bool	Connect (char *szDSNorIP, char *szUserName, char *szPassword)=0;
-	virtual void	Disconnect ()=0;
-	virtual bool	SelectDB (char *szDBName)=0;
+	virtual bool	Connect(char const *szDSNorIP, char const *szUserName, char const *szPassword) = 0;
+	virtual void	Disconnect () = 0;
+	virtual bool	SelectDB (char const *szDBName) = 0;
 
 	virtual const char*GetERROR()=0;
 

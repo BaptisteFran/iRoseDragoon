@@ -24,7 +24,8 @@ struct tagQueryDATA {
 #define	USE_MY_SQL		0x000
 #define	USE_ODBC		0x001
 
-class CSqlTHREAD : public classTHREAD {
+class CSqlTHREAD : public classTHREAD
+{
 protected :
 	classSQL		*m_pSQL;
 
@@ -42,13 +43,21 @@ protected :
 
 	virtual bool Proc_QuerySTRING ();
 
-public :
+public:
 	CSqlTHREAD (bool bCreateSuspended);
 	virtual ~CSqlTHREAD ();
 
 //	virtual void Execute() = 0;
 
-	bool Connect (BYTE btSqlTYPE, char *szServerIP, char *szUser, char *szPassword, char *szDBName, short nBindParamCNT=64, WORD wQueryBufferLEN=8192);
+	bool Connect(
+		BYTE btSqlTYPE,
+		char const *szServerIP,
+		char const *szUser,
+		char const *szPassword,
+		char const *szDBName,
+		short nBindParamCNT = 64,
+		WORD wQueryBufferLEN = 8192);
+
 	void Free ();
 
 	bool Add_SqlPACKET (int iTAG, char *szName, BYTE *pDATA, int iDataSize);
