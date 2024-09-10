@@ -25,7 +25,7 @@ void CAcceptTHREAD::Execute ()
     SOCKADDR_IN SockADDR;
     int         iAddrLEN;
 
-	g_LOG.CS_ODS( 0xffff, ">  > >> CAcceptTHREAD::Execute() ThreadID: %d(0x%x)\n", this->ThreadID, this->ThreadID );
+	g_LOG.CS_ODS( 0xffff, ">>>> CAcceptTHREAD::Execute() ThreadID: %d(0x%x)\n", this->ThreadID, this->ThreadID );
 
 //    Synchronize( LogSTART );
 
@@ -50,7 +50,16 @@ void CAcceptTHREAD::Execute ()
 			continue;	// break;
         }
 
-        if ( !this->AcceptSOCKET( ClientSocket, SockADDR ) ) {
+        if(!this->AcceptSOCKET(ClientSocket, SockADDR))
+		{
+			g_LOG.CS_ODS(
+				0xffff,
+				"Dropping socket with IP: %d.%d.%d.%d\n",
+				SockADDR.sin_addr.S_un.S_un_b.s_b1,
+				SockADDR.sin_addr.S_un.S_un_b.s_b2,
+				SockADDR.sin_addr.S_un.S_un_b.s_b3,
+				SockADDR.sin_addr.S_un.S_un_b.s_b4);
+
             // 더이상 받을수 없거나 블럭된 IP다.
             struct linger li = {0, 0};	// Default: SO_DONTLINGER
 
@@ -60,7 +69,7 @@ void CAcceptTHREAD::Execute ()
         }
     }
 
-	g_LOG.CS_ODS( 0xffff, "<  < << CAcceptTHREAD::Execute() ThreadID: %d(0x%x)\n", this->ThreadID, this->ThreadID );
+	g_LOG.CS_ODS( 0xffff, "<<<< CAcceptTHREAD::Execute() ThreadID: %d(0x%x)\n", this->ThreadID);
 
 //    Synchronize( LogSTOP );
 }

@@ -1,54 +1,78 @@
 #ifndef classIOCPH
 #define classIOCPH
-// #include <ScktComp.hpp>
-/*
-#include "DLLIST.h"
-#include "classHASH.h"
-#include "classINDEX.h"
-#include "classSYNCOBJ.h"
-#include "iocpSOCKET.h"
-*/
-//---------------------------------------------------------------------------
+
+#include <Windows.h>
+
+#include "classLOG.h"
 
 class CIOCP
 {
 private:
-	HANDLE	m_hIOCP;
+	HANDLE m_hIOCP;
 
 public :
-	CIOCP ()				{	m_hIOCP=NULL;		}
-	~CIOCP ()				{	this->ClosePort();	}
+	CIOCP()
+	{
+		m_hIOCP = NULL;
+	}
 
-	HANDLE	GetHANDLE()		{	return m_hIOCP;		}
+	~CIOCP()
+	{
+		this->ClosePort();
+	}
 
-	bool OpenPort (DWORD dwWorkerThreadCNT=0)	// 0 is default 
+	HANDLE GetHANDLE()
+	{
+		return m_hIOCP;
+	}
+
+	bool OpenPort(DWORD dwWorkerThreadCNT = 0) // 0 is default 
 	{		
 		this->ClosePort ();
 		m_hIOCP = ::CreateIoCompletionPort(	INVALID_HANDLE_VALUE,
 											NULL,					// No prior port
 											0,						// No key
 											dwWorkerThreadCNT);		// Use default  # of threads
-		return ( NULL != m_hIOCP );
+
+		g_LOG.CS_ODS(
+			0xffff,
+			"* Created IO Completion port: %d(0x%d)\n",
+			m_hIOCP,
+			m_hIOCP);
+
+		return (NULL != m_hIOCP);
 	}
 
-	void ClosePort ()
+	void ClosePort()
 	{
-		if ( m_hIOCP ) {
+		if(m_hIOCP)
+		{
+			g_LOG.CS_ODS(
+				0xffff,
+				"* Closed IO Completion port: %d(0x%d)\n",
+				m_hIOCP,
+				m_hIOCP);
+
 			::CloseHandle (m_hIOCP);
 			m_hIOCP = NULL;
 		}
 	}
 
-	bool LinkPort (HANDLE hFileHandle, ULONG_PTR ulCompletionKey)
+	bool LinkPort(HANDLE hFileHandle, ULONG_PTR ulCompletionKey)
 	{
-        return ( NULL != ::CreateIoCompletionPort (
-							(HANDLE)hFileHandle,	// HANDLE FileHandle,              // handle to file
-							this->m_hIOCP,			// HANDLE ExistingCompletionPort,  // handle to I/O completion port
-							ulCompletionKey,		// ULONG_PTR CompletionKey,        // completion key
-							0 ) );				    // DWORD NumberOfConcurrentThreads // number of threads to execute concurrently
-	}
-} ;
+		g_LOG.CS_ODS(
+			0xffff,
+			"* Created IO Completion port: %d(0x%d)\n",
+			m_hIOCP,
+			m_hIOCP);
 
+        return (NULL != ::CreateIoCompletionPort(
+			(HANDLE)hFileHandle,	// HANDLE FileHandle,              // handle to file
+			this->m_hIOCP,			// HANDLE ExistingCompletionPort,  // handle to I/O completion port
+			ulCompletionKey,		// ULONG_PTR CompletionKey,        // completion key
+			0));				    // DWORD NumberOfConcurrentThreads // number of threads to execute concurrently
+	}
+};
 
 /*
 #define	DEFAULT_CLIENT_SOCKET		( 1024 * 32 )
@@ -87,5 +111,4 @@ public :
 } ;
 */
 
-//---------------------------------------------------------------------------
 #endif

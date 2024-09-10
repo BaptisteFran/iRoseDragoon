@@ -5,15 +5,13 @@
 #include "classLOG.h"
 #include "CIocpTHREAD.h"
 
-//-------------------------------------------------------------------------------------------------
-CIocpTHREAD::CIocpTHREAD (bool bCreateSuspended)
-	: classTHREAD( bCreateSuspended )
+CIocpTHREAD::CIocpTHREAD(bool bCreateSuspended)
+	: classTHREAD(bCreateSuspended)
 	, m_hIOCP(nullptr)
 	, m_iThreadNO(0)
 {
 }
 
-//-------------------------------------------------------------------------------------------------
 void CIocpTHREAD::Execute()
 {
 	DWORD		 dwBytesIO = 0;
@@ -29,6 +27,12 @@ void CIocpTHREAD::Execute()
 
 	while(!Terminated)
 	{
+		g_LOG.CS_ODS(
+			0xffff,
+			"* Waiting on IO Completion: Handle: %d(0x%x)\n",
+			m_hIOCP,
+			m_hIOCP);
+
 		if(0 == GetQueuedCompletionStatus(
 			m_hIOCP,
 			&dwBytesIO,
@@ -36,6 +40,12 @@ void CIocpTHREAD::Execute()
 			(LPOVERLAPPED *)&lpOverlapped,
 			INFINITE))
 		{
+			g_LOG.CS_ODS(
+				0xffff,
+				"* IO Complete (FALSE): Handle: %d(0x%x), Completion Key: %d\n",
+				m_hIOCP,
+				m_hIOCP,
+				dwCompletionKey);
 			/*
 			If *lpOverlapped is NULL and the function does not dequeue a completion packet from the completion port,
 			the RETURN VALUE IS ZERO.
@@ -94,6 +104,13 @@ void CIocpTHREAD::Execute()
 				m_iThreadNO);
 			break;
 		}
+
+		g_LOG.CS_ODS(
+			0xffff,
+			"* IO Complete(TRUE): Handle: % d(0x % x), Completion Key : % d\n",
+			m_hIOCP,
+			m_hIOCP,
+			dwCompletionKey);
 
 		if(0 == dwBytesIO)
 		{

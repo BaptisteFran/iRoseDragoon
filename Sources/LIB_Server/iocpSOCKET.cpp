@@ -75,6 +75,11 @@ void iocpSOCKET::Clear_LIST(void)
 // pRecvNode에 이어 받기.
 ePacketRECV iocpSOCKET::Recv_Continue(tagIO_DATA *pRecvDATA)
 {
+	g_LOG.CS_ODS(
+		0xffff,
+		"* Starting IO (Read): Completion key: %d\n",
+		m_iSocketIDX);
+
 	if(0 == ::ReadFile(
 		(HANDLE)m_Socket,
 		&pRecvDATA->m_pCPacket->m_pDATA[pRecvDATA->m_dwIOBytes],
@@ -96,7 +101,19 @@ ePacketRECV iocpSOCKET::Recv_Continue(tagIO_DATA *pRecvDATA)
 			// false 리턴하면 접속 끊자...
 			return eRESULT_PACKET_DISCONNECT;
 		}
+
+		g_LOG.CS_ODS(
+			0xffff,
+			"IO (Read) is pending: Completion key: %d\n",
+			m_iSocketIDX);
+
+		return eRESULT_PACKET_OK;
 	}
+
+	g_LOG.CS_ODS(
+		0xffff,
+		"* Finished IO (Read): Completion key: %d\n",
+		m_iSocketIDX);
 
 	return eRESULT_PACKET_OK;
 }

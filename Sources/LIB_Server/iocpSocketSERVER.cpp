@@ -113,6 +113,12 @@ void IOCPSocketSERVER::ShutdownWORKER()
 		{
 			m_ppWorkerTHREAD[dwI]->Terminate();
 
+			g_LOG.CS_ODS(
+				0xffff,
+				"* Posting IO Completion: HANDLE: %d(0x%x)",
+				m_IOCP.GetHANDLE(),
+				m_IOCP.GetHANDLE());
+
 			if(0 == ::PostQueuedCompletionStatus(m_IOCP.GetHANDLE(), -1, 0, nullptr))
 			{
 				DWORD error = GetLastError();
@@ -194,6 +200,7 @@ bool IOCPSocketSERVER::New_SOCKET(SOCKET hSocket, sockaddr_in &SockADDR)
 
 	pSOCKET->Init_SCOKET();
 	int completionKey = lastSocket.fetch_add(1) + 1;
+	g_LOG.CS_ODS(0xffff, "* New IO Completion key: %d\n", completionKey);
 
 	pSOCKET->m_Socket = hSocket;
 	pSOCKET->m_IP.Set(szIP);
