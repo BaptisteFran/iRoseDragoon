@@ -96,13 +96,6 @@ ePacketRECV iocpSOCKET::Recv_Continue(tagIO_DATA *pRecvDATA)
 			// false 리턴하면 접속 끊자...
 			return eRESULT_PACKET_DISCONNECT;
 		}
-		else
-			g_LOG.CS_ODS(
-				0xffff,
-				"Socket: %d, ReadFile pending error... Packet: %p, OVERLAPPED: %p\n",
-				m_iSocketIDX,
-				pRecvDATA->m_pCPacket,
-				pRecvDATA);
 	}
 
 	return eRESULT_PACKET_OK;
