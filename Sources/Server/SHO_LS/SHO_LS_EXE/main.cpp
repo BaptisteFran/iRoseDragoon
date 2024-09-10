@@ -58,7 +58,7 @@ struct Settings
 {
 	Settings(std::string const& fileName);
 
-	std::string ip, monitorPassword;
+	std::string ip, monitorPassword, dbName, dbUser, dbPassword;
 	short port, clientPort;
 	unsigned int loginRight;
 	int maxUsers;
@@ -104,6 +104,9 @@ int wmain(int argc, wchar_t *argv[])
 	started = LS_StartServerSOCKET(
 		window,
 		settings.ip.data(),
+		settings.dbName,
+		settings.dbUser,
+		settings.dbPassword,
 		settings.port,
 		settings.loginRight,
 		const_cast<char *>(ip),
@@ -420,4 +423,37 @@ Settings::Settings(std::string const &fileName)
 
 	buf[++end] = 0;
 	monitorPassword = buf;
+
+	end = GetPrivateProfileStringA(
+		"FormLSCFG",
+		"EditLoginAccountDBName",
+		"SEVEN_ORA",
+		buf,
+		128,
+		fileName.c_str());
+
+	buf[++end] = 0;
+	dbName = buf;
+
+	end = GetPrivateProfileStringA(
+		"FormLSCFG",
+		"EditLoginAccountDBUser",
+		"sa",
+		buf,
+		128,
+		fileName.c_str());
+
+	buf[++end] = 0;
+	dbUser = buf;
+
+	end = GetPrivateProfileStringA(
+		"FormLSCFG",
+		"EditLoginAccountDBPassword",
+		"p@ssword1",
+		buf,
+		128,
+		fileName.c_str());
+
+	buf[++end] = 0;
+	dbPassword = buf;
 }

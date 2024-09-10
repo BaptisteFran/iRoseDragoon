@@ -39,12 +39,22 @@ DLL_LS_API void __stdcall LS_Free ()
 }
 
 //-------------------------------------------------------------------------------------------------
-DLL_LS_API bool __stdcall LS_StartServerSOCKET(HWND hWnd, char *szDBServerIP, int iServerListenPort, DWORD dwLoginRight, char *szGumsIP, int iGumsPORT, bool bShowOnlyWS )
+DLL_LS_API bool __stdcall LS_StartServerSOCKET(
+	HWND hWnd,
+	char *szDBServerIP,
+	std::string const &dbName,
+	std::string const &dbUser,
+	std::string const &dbPassword,
+	int iServerListenPort,
+	DWORD dwLoginRight,
+	char *szGumsIP,
+	int iGumsPORT,
+	bool bShowOnlyWS)
 {
 	if ( NULL == g_pLS )
 		return false;
 
-	return g_pLS->StartServerSOCKET( hWnd, szDBServerIP, iServerListenPort, dwLoginRight, szGumsIP, iGumsPORT, bShowOnlyWS );
+	return g_pLS->StartServerSOCKET(hWnd, szDBServerIP, dbName, dbUser, dbPassword, iServerListenPort, dwLoginRight, szGumsIP, iGumsPORT, bShowOnlyWS);
 }
 
 

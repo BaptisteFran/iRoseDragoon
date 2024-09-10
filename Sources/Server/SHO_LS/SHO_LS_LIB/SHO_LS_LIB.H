@@ -1,5 +1,8 @@
 #ifndef	__SHO_LS_LIB_H
 #define	__SHO_LS_LIB_H
+
+#include <string>
+
 #include "CLS_API.h"
 #include "classTIME.h"
 #include "LIB_Util.h"
@@ -30,7 +33,19 @@ public :
 
 	bool StartClientSOCKET (int iClientListenPort, int iLimitUserCNT, BYTE btMD5[32]);
 	void CloseClientSOCKET ();
-	bool StartServerSOCKET (HWND hMainWND, char *szDBServerIP, int iServerListenPort, DWORD dwLoginRight, char *szGumsIP, int iGumsPORT, bool bShowOnlyWS);
+
+	bool StartServerSOCKET(
+		HWND hMainWND,
+		char *szDBServerIP,
+		std::string const &dbName,
+		std::string const &dbUser,
+		std::string const &dbPassword,
+		int iServerListenPort,
+		DWORD dwLoginRight,
+		char *szGumsIP,
+		int iGumsPORT,
+		bool bShowOnlyWS);
+
 	void Shutdown ();
 
 	void Send_ANNOUNCE( void *pServer, char *szAnnounceMsg );

@@ -203,7 +203,17 @@ void SHO_LS::CloseClientSOCKET ()
 
 
 
-bool SHO_LS::StartServerSOCKET (HWND hMainWND, char *szDBServerIP, int iServerListenPort, DWORD dwLoginRight, char *szGumsIP, int iGumsPORT, bool bShowOnlyWS)
+bool SHO_LS::StartServerSOCKET(
+	HWND hMainWND,
+	char *szDBServerIP,
+	std::string const &dbName,
+	std::string const &dbUser,
+	std::string const &dbPassword,
+	int iServerListenPort,
+	DWORD dwLoginRight,
+	char *szGumsIP,
+	int iGumsPORT,
+	bool bShowOnlyWS)
 {
 	if ( m_iServerListenPortNO )
 		return false;
@@ -223,10 +233,6 @@ bool SHO_LS::StartServerSOCKET (HWND hMainWND, char *szDBServerIP, int iServerLi
 		char *szDBName  = "SHO";
         char *szDBUser	= "icarus";
         char *szPassword= "1111";
-#else
-		char *szDBName  = "SEVEN_ORA";
-        char *szDBUser	= "seven";
-        char *szPassword= "tpqmsgkcm";
 #endif
 
         g_pThreadSQL = CLS_SqlTHREAD::Instance ();
@@ -235,7 +241,7 @@ bool SHO_LS::StartServerSOCKET (HWND hMainWND, char *szDBServerIP, int iServerLi
 	#ifndef	USE_ORACLE_DB
 			if ( !g_pThreadSQL->Connect( USE_MY_SQL, (char*)szDBServerIP, szDBUser, szPassword, szDBName, 32, 1024*8) ) {
 	#else
-			if ( !g_pThreadSQL->Connect( USE_ODBC, szDBServerIP, szDBUser, szPassword, szDBName, 32, 1024*4) ) {
+			if ( !g_pThreadSQL->Connect( USE_ODBC, szDBServerIP, dbUser.c_str(), dbPassword.c_str(), dbName.c_str(), 32, 1024 * 4)) {
 	#endif
 				g_LOG.CS_ODS (0xffff, "sql connect failed ...");
 				g_pThreadSQL->Destroy ();
