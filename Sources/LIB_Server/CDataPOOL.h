@@ -1,158 +1,251 @@
 #ifndef	__CDATAPOOL_H
 #define	__CDATAPOOL_H
-#include "crtdbg.h"
-#include "SLLIST.h"
-#include "classSYNCOBJ.h"
-#include "classSTR.h"
+
+#include <cassert>
+#include <cstddef>
+
+#include <algorithm>
+#include <mutex>
+#include <utility>
+#include <vector>
+
 #include "classLOG.h"
-//-------------------------------------------------------------------------------------------------
+#include "classSTR.h"
 
 template <class t_DATA>
-class CDataPOOL: public CCriticalSection
+class CDataPOOL
 {
-protected:
-	struct CDataNODE: public t_DATA
-	{
-		bool		 m_POOL_bUsed;
-		CDataNODE	*m_POOL_pNextNODE;
-		CDataNODE()
-		{
-			m_POOL_bUsed = false;
-			m_POOL_pNextNODE = nullptr;
-		}
-	};
-
-	UINT					m_uiTotalDataCNT;
-	UINT					m_uiIncDataCNT;
-	int						m_iUsedCNT;
-
-	CStrVAR					m_PoolName;
-	classSLLIST<CDataNODE*> m_BlockLIST;
-	CDataNODE			   *m_pHeadNODE;
-	CDataNODE			   *m_pTailNODE;
-
-	CDataNODE *Create(UINT uiDataCNT)
-	{
-		CDataNODE *pDataBLOCK = nullptr;
-
-		pDataBLOCK = new CDataNODE[uiDataCNT];
-		if(nullptr == pDataBLOCK)
-			return nullptr;
-
-		m_BlockLIST.AllocNAppend(pDataBLOCK);
-		m_uiTotalDataCNT += uiDataCNT;
-
-		CDataNODE *pNextNODE = nullptr;
-		CDataNODE *pDataNODE = nullptr;
-
-		m_pTailNODE = &pDataBLOCK[uiDataCNT - 1];
-		m_pTailNODE->m_POOL_pNextNODE = nullptr;
-		for(int iC = uiDataCNT - 1; iC >= 0; iC--)
-		{
-			pDataNODE = &pDataBLOCK[iC];
-
-			pDataNODE->m_POOL_pNextNODE = pNextNODE;
-			pNextNODE = pDataNODE;
-		}
-
-		g_LOG.CS_ODS(0xffff, ">>>> Pool[ %s ] Increase %d data total: %d\n", m_PoolName.Get(), uiDataCNT, m_uiTotalDataCNT);
-
-
-		return pDataBLOCK;
-	}
-
 public:
 	char *GetPoolNAME()
 	{
-		return	m_PoolName.Get();
-	}
-	int	  GetUsedCNT()
-	{
-		return	m_iUsedCNT;
+		return	poolName.Get();
 	}
 
-
-	CDataPOOL(char *szName, UINT uiInitDataCNT, UINT uiIncDataCNT): CCriticalSection(4000)
+	size_t GetUsedCNT()
 	{
-		m_PoolName.Set(szName);
-
-		m_uiIncDataCNT = uiIncDataCNT;
-		m_uiTotalDataCNT = 0;
-		m_iUsedCNT = 0;
-
-		m_pTailNODE = nullptr;
-		m_pHeadNODE = this->Create(uiInitDataCNT);
+		return size;
 	}
-	virtual ~CDataPOOL()
-	{
-		classSLLNODE< CDataNODE* > *pBlockNODE;
 
-		pBlockNODE = m_BlockLIST.DeleteHead();
-		while(pBlockNODE)
+	CDataPOOL(char *szName, size_t initialCount, size_t blockSize)
+		: maxSize(initialCount)
+		, size(0)
+		, blockSize(blockSize)
+		, poolName()
+		, blocks()
+		, lastFree(0, 0)
+		, lock()
+	{
+		blocks.reserve(initialCount);
+		poolName.Set(szName);
+
+		Grow(initialCount);
+	}
+
+	virtual ~CDataPOOL() = default;
+
+	t_DATA *Pool_Alloc()
+	{
+		std::lock_guard<std::mutex> guard(lock);
+
+		size_t const x = lastFree.first, const y = lastFree.second;
+
+		if(blocks[x].FreeAt(y))
 		{
-			SAFE_DELETE_ARRAY(pBlockNODE->DATA);
-			SAFE_DELETE(pBlockNODE);
-			pBlockNODE = m_BlockLIST.DeleteHead();
+			++size;
+			blocks[x].freeList[y] = 0;
+			return new (blocks[x].data[y].memory) t_DATA();
 		}
-	}
 
-	t_DATA*	Pool_Alloc()
-	{
-		t_DATA *pDATA = nullptr;
-
-		this->Lock();
+		for(size_t i = x; i < blocks.size(); ++i)
 		{
-			if(this->m_pHeadNODE)
-			{
-				if(nullptr == this->m_pHeadNODE->m_POOL_pNextNODE)
+			Chunk &chunk = blocks[i];
+
+			auto it = std::find_if(
+				chunk.freeList.begin(),
+				chunk.freeList.end(),
+				[](int open)
 				{
-					this->m_pHeadNODE->m_POOL_pNextNODE = this->Create(m_uiIncDataCNT);
-				}
+					return open == 1;
+				});
 
-				this->m_pHeadNODE->m_POOL_bUsed = true;
-				pDATA = reinterpret_cast<t_DATA*>(this->m_pHeadNODE);
-				this->m_pHeadNODE = this->m_pHeadNODE->m_POOL_pNextNODE;
-				this->m_iUsedCNT++;
-			}
-			else
+			if(it != chunk.freeList.end())
 			{
-				// Out of memory ...
-				pDATA = nullptr;
+				IncLastFree();
+				++size;
+				*it = 0;
+				size_t const idx = std::distance(chunk.freeList.begin(), it);
+				return new (chunk.data[idx].memory) t_DATA();
 			}
 		}
-		this->Unlock();
 
-		return pDATA;
+		try
+		{
+			size_t lastEnd = blocks.size();
+			Grow(blockSize);
+			++size;
+			blocks[lastEnd].freeList[0] = 0;
+			return new (blocks[lastEnd].data[0].memory) t_DATA();
+		}
+		catch(std::bad_alloc &e)
+		{
+			g_LOG.CS_ODS(
+				0xffff,
+				">>>> ERROR:: Pool[ %s ] Out of memory.\n",
+				poolName.Get());
+		}
+
+		return nullptr;
 	}
 
-	void	Pool_Free(t_DATA *pDATA)
+	void Pool_Free(t_DATA *pDATA)
 	{
-		CDataNODE *pDataNODE = reinterpret_cast<CDataNODE*>(pDATA);
-		this->Lock();
+		std::lock_guard<std::mutex> guard(lock);
+
+		unsigned char *memory = reinterpret_cast<unsigned char*>(pDATA);
+		DataBlock *block = reinterpret_cast<DataBlock *>(memory);
+
+		assert(block->parentIdx < blocks.size());
+		Chunk &parent = blocks[block->parentIdx];
+
+		size_t const idx = parent.BlockIndex(poolName, block);
+		if(parent.FreeAt(idx))
 		{
-			// 두번 풀리는거 체크...
-			if(pDataNODE->m_POOL_bUsed)
-			{
-				pDataNODE->m_POOL_bUsed = false;
+			g_LOG.CS_ODS(
+				0xffff,
+				">>>> ERROR:: Pool[ %s ] Duplicated free, size: %d\n",
+				poolName.Get(),
+				size);
 
-				this->m_iUsedCNT--;
-				_ASSERT(this->m_iUsedCNT >= 0);
-
-				this->m_pTailNODE->m_POOL_pNextNODE = pDataNODE;
-				this->m_pTailNODE = pDataNODE;
-				this->m_pTailNODE->m_POOL_pNextNODE = nullptr;
-
-				if(nullptr == this->m_pHeadNODE)
-				{
-					this->m_pHeadNODE = this->m_pTailNODE;
-				}
-			}
-			else
-			{
-				g_LOG.CS_ODS(0xffff, ">>>> ERROR:: Pool[ %s ] Duplicated free, UsedCNT: %d\n", m_PoolName.Get(), this->m_iUsedCNT);
-			}
+			std::abort();
 		}
-		this->Unlock();
+
+		parent.freeList[idx] = 1;
+
+		// Do we need to run destructors here?
+		// Logic would deem this to be so, but the original code doesn't do it
+		// either. Making me think the destructor is either not run at all,
+		// or it's run before calling Pool_Free()...
+		//pDATA.~t_DATA();
+
+		lastFree = std::make_pair(block->parentIdx, idx);
+
+		--size;
+	}
+
+private:
+	struct Chunk;
+
+	struct DataBlock
+	{
+		DataBlock(size_t parentIdx)
+			: parentIdx(parentIdx)
+		{
+		}
+
+		unsigned char memory[sizeof(t_DATA)];
+		size_t parentIdx;
+	};
+
+	struct Chunk
+	{
+		Chunk(size_t size, size_t idx)
+			: data(size, idx)
+			, freeList(size, 1)
+		{
+		}
+
+		bool Full() const
+		{
+			return std::all_of(
+				freeList.cbegin(),
+				freeList.cend(),
+				[](int open)
+				{
+					return open == 0;
+				});
+		}
+
+		bool FreeAt(size_t idx)
+		{
+			return freeList[idx];
+		}
+
+		size_t BlockIndex(CStrVAR const &poolName, DataBlock const *block)
+		{
+			ptrdiff_t diff = block - data.data();
+
+			if(diff < 0)
+			{
+				g_LOG.CS_ODS(
+					0xffff,
+					">>>> ERROR:: Pool[ %s ] Attempt to find non-existent data block.\n",
+					poolName.Get());
+
+				std::abort();
+			}
+
+			size_t idx = size_t(diff);
+			if(idx < data.size())
+				return idx;
+
+			g_LOG.CS_ODS(
+				0xffff,
+				">>>> ERROR:: Pool[ %s ] Attempt to find non-existent data block.\n",
+				poolName.Get());
+
+			std::abort();
+		}
+
+		std::vector<DataBlock> data;
+		std::vector<int> freeList;
+	};
+
+	size_t maxSize, size, blockSize;
+	CStrVAR poolName;
+	std::vector<Chunk> blocks;
+	std::pair<size_t, size_t> lastFree;
+
+	std::mutex lock;
+
+	void IncLastFree()
+	{
+		++lastFree.second;
+		if(lastFree.second >= blockSize)
+		{
+			lastFree.second = 0;
+			++lastFree.first;
+		}
+
+		if(lastFree.first >= blocks.size())
+			lastFree.first = 0;
+	}
+
+protected:
+	void Grow(size_t increase)
+	{
+		size_t left = increase;
+		bool lastFreeSet = false;
+
+		while(left > 0)
+		{
+			blocks.emplace_back(blockSize, blocks.size());
+
+			if(!lastFreeSet)
+			{
+				lastFree = std::make_pair(blocks.size() - 1, size_t(0));
+				lastFreeSet = true;
+			}
+
+			maxSize += blockSize;
+			left -= std::min(blockSize, left);
+		}
+
+		g_LOG.CS_ODS(
+			0xffff,
+			">>>> Pool[ %s ] Increase %d data total: %d\n",
+			poolName.Get(),
+			increase,
+			maxSize);
 	}
 };
 #endif
