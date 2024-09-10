@@ -91,7 +91,7 @@ public:
 	char *Alloc(WORD wStrLen, WORD wStaticStrLen = 0);
 	void Set(char *szStrIn);
 	
-	char *Get(void)
+	char *Get(void) const
 	{
 		return m_pStr;
 	}
