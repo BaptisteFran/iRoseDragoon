@@ -130,7 +130,6 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 
 	g_LOG.CS_ODS(0xffff, "Locking socket...\n");
 	this->LockSOCKET();
-	g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
 
 	if(pRecvDATA->m_dwIOBytes < sizeof(t_PACKETHEADER))
 	{
@@ -138,6 +137,7 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 		assert(0 == pRecvDATA->m_pCPacket->GetLength());
 		// 최소 크기의 패킷 받기...
 		eResult = this->Recv_Continue(pRecvDATA);	// 이어 받기.
+		g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
 		this->UnlockSOCKET();
 		return eResult;
 	}
@@ -154,6 +154,7 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 				"*** ERROR: Decode recv packet header1, IP[ %s ]\n",
 				this->m_IP.Get());
 
+			g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
 			this->UnlockSOCKET();
 			assert(pRecvDATA == m_RecvList.front().get());
 			m_RecvList.pop();
@@ -172,6 +173,7 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 			"*** ERROR: MAX_PACKET_SIZE  recv packet header1, IP[ %s ]\n",
 			this->m_IP.Get());
 
+		g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
 		this->UnlockSOCKET();
 		assert(pRecvDATA == m_RecvList.front().get());
 		m_RecvList.pop();
@@ -185,6 +187,7 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 	// 서버가 멈추는 것을 막기위해서 _ASSERT() 대신 에러리턴
 	if(pRecvDATA->m_pCPacket->GetLength() < sizeof(t_PACKETHEADER))
 	{
+		g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
 		this->UnlockSOCKET();
 		assert(pRecvDATA == m_RecvList.front().get());
 		m_RecvList.pop();
@@ -198,6 +201,7 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 	if((short)pRecvDATA->m_dwIOBytes < pRecvDATA->m_pCPacket->GetLength())
 	{
 		eResult = this->Recv_Continue(pRecvDATA);	// 이어 받기.
+		g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
 		this->UnlockSOCKET();
 		return eResult;
 	}
@@ -205,6 +209,7 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 	{
 		if((short)pRecvDATA->m_dwIOBytes == pRecvDATA->m_pCPacket->GetLength())
 		{
+			g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
 			this->UnlockSOCKET();
 			if(!this->Recv_Done(pRecvDATA))		// Free_RecvIODATA( pRecvDATA ); <-- Recv_done에서 호출되어옴
 				return eRESULT_PACKET_DISCONNECT;//false;
@@ -228,6 +233,7 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 			nPacketSIZE = this->D_RecvH(pHEADER);
 			if(0 == nPacketSIZE)
 			{
+				g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
 				this->UnlockSOCKET();
 				assert(pRecvDATA == m_RecvList.front().get());
 				m_RecvList.pop();
@@ -241,6 +247,7 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 
 		if(nRemainBytes == nPacketSIZE)
 		{
+			g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
 			this->UnlockSOCKET();
 			if(!this->Recv_Done(pRecvDATA))		// 완성 패킷 추가, Free_RecvIODATA( pRecvDATA );<-- Recv_done에서 호출되어옴
 				return eRESULT_PACKET_DISCONNECT;//false;
@@ -275,6 +282,7 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 
 		m_RecvList.emplace(pNewNODE);
 
+		g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
 		this->UnlockSOCKET();
 		if(!this->Recv_Done(pRecvDATA))
 		{
@@ -287,6 +295,7 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 
 	eResult = eRESULT_PACKET_DISCONNECT;//false;
 
+	g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
 	this->UnlockSOCKET();
 	return eResult;
 }
