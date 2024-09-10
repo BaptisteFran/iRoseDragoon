@@ -4,6 +4,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 
 #include "CAcceptTHREAD.h"
@@ -15,7 +16,7 @@
 
 class IOCPSocketAcceptTHREAD;
 class IOCPSocketWorkerTHREAD;
-class IOCPSocketSERVER: public CCriticalSection
+class IOCPSocketSERVER
 {
 protected:
 	CIOCP			m_IOCP;
@@ -28,8 +29,9 @@ protected:
 
 	std::unordered_map<int, std::unique_ptr<iocpSOCKET, std::function<void(iocpSOCKET*)>>> allSockets;
 	std::unordered_map<int, iocpSOCKET*> sockets;
-	std::atomic_int lastSocket;
+	std::atomic<size_t> lastSocket;
 	bool m_bManageSocketVerify;
+	std::mutex lock;
 
 public	:
 	// worker thread 갯수 = CPU갯수 * btMulCPUT + cAddCPUT
@@ -45,16 +47,6 @@ public	:
 	virtual void InitClientSOCKET( iocpSOCKET *pCLIENT ) {}		// 접속 완료.. 초기화 할거 있음 해라..
 	virtual void FreeClientSOCKET( iocpSOCKET *pCLIENT )=0;		// 검증없이 메모리 해제
 	virtual void ClosedClientSOCKET( iocpSOCKET *pCLIENT )=0;	// 소켓이 삭제됐다.. 알아서 메모리 해제할것...
-
-	void LockLIST ()
-	{
-		this->Lock ();	
-	}
-
-	void UnlockLIST ()
-	{
-		this->Unlock ();
-	}
 
 	inline iocpSOCKET* GetSOCKET( int iSocketIDX )		
 	{	

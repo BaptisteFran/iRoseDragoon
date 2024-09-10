@@ -18,8 +18,7 @@ IOCPSocketSERVER::IOCPSocketSERVER(
 	BYTE btMulCPU,
 	char cAddCPU,
 	bool bManageSocketVerify) 
-	: CCriticalSection( 4000 )
-	, m_IOCP()
+	: m_IOCP()
 	, m_dwWorkerThreadCNT(0)
 	, m_ServerName()
 	, m_pAcceptTHREAD(nullptr)
@@ -27,6 +26,7 @@ IOCPSocketSERVER::IOCPSocketSERVER(
 	, sockets()
 	, lastSocket(0)
 	, m_bManageSocketVerify(bManageSocketVerify)
+	, lock()
 {
 	m_ServerName.Set( szName );
 
@@ -41,7 +41,8 @@ IOCPSocketSERVER::IOCPSocketSERVER(
 	m_dwWorkerThreadCNT = 1;
 #endif
 
-	m_IOCP.OpenPort( m_dwWorkerThreadCNT );
+	bool ret = m_IOCP.OpenPort( m_dwWorkerThreadCNT );
+	assert(ret);
 }
 
 IOCPSocketSERVER::~IOCPSocketSERVER ()
@@ -64,20 +65,18 @@ bool IOCPSocketSERVER::Active(int iListenTCPPortNO, int iKeepAliveSec)
 void IOCPSocketSERVER::ShutdownSOCKET()
 {
 	for(auto &socketKVP : allSockets)
-	{
 		Del_SOCKET(socketKVP.first);
-	}
 }
 
 void IOCPSocketSERVER::StartACCEPT(int iListenTCPPortNO, int iKeepAliveSec)
 {
 	if(NULL == m_pAcceptTHREAD)
 	{
-		m_pAcceptTHREAD = new IOCPSocketAcceptTHREAD(this);                // suspend mode
+		m_pAcceptTHREAD = new IOCPSocketAcceptTHREAD(this); // suspend mode
 		if(!m_pAcceptTHREAD->Init(iListenTCPPortNO, iKeepAliveSec))
 		{
 			SAFE_DELETE(m_pAcceptTHREAD);
-			return;// false;
+			return;
 		}
 		m_pAcceptTHREAD->Resume();
 	}
@@ -116,12 +115,13 @@ void IOCPSocketSERVER::ShutdownWORKER()
 
 			if(0 == ::PostQueuedCompletionStatus(m_IOCP.GetHANDLE(), -1, 0, nullptr))
 			{
+				DWORD error = GetLastError();
 				g_LOG.CS_ODS(
 					0xffff,
 					"ThreadWORKER::Free() PostQueuedCompletionStatus() return 0"
 					", LastERROR: %d(0x%x)",
-					GetLastError(),
-					GetLastError());
+					error,
+					error);
 			}
 		}
 
@@ -155,36 +155,32 @@ void IOCPSocketSERVER::CloseIdleSCOKET(DWORD dwIdleMilliSec)
 {
 	DWORD dwCurTime = ::timeGetTime();
 
-	this->Lock();
+	std::lock_guard<std::mutex> guard(lock);
+
+	for(auto const &socketKVP : sockets)
 	{
-		for(auto const &socketKVP : sockets)
+		auto const &socket = socketKVP.second;
+
+		if(socket->m_bVerified)
 		{
-			auto const &socket = socketKVP.second;
+			Del_SOCKET(socketKVP.first);
+			continue;
+		}
 
-			if(socket->m_bVerified)
-			{
-				Del_SOCKET(socketKVP.first);
-				continue;
-			}
+		if(dwCurTime - socket->m_dwConnTIME >= dwIdleMilliSec)
+		{
+			g_LOG.CS_ODS(
+				0xffff,
+				"Close Idle SOCK:: %s:%d=%d-%d, %s\n",
+				GetServerNAME(),
+				dwCurTime - socket->m_dwConnTIME,
+				dwCurTime,
+				socket->m_dwConnTIME,
+				socket->Get_IP());
 
-			if(dwCurTime - socket->m_dwConnTIME >= dwIdleMilliSec)
-			{
-				g_LOG.CS_ODS(
-					0xffff,
-					"Close Idle SOCK:: %s:%d=%d-%d, %s\n",
-					GetServerNAME(),
-					dwCurTime - socket->m_dwConnTIME,
-					dwCurTime,
-					socket->m_dwConnTIME,
-					socket->Get_IP());
-
-				//socket->CloseSocket();
-
-				Del_SOCKET(socketKVP.first);
-			}
+			Del_SOCKET(socketKVP.first);
 		}
 	}
-	this->Unlock();
 }
 
 bool IOCPSocketSERVER::New_SOCKET(SOCKET hSocket, sockaddr_in &SockADDR)
@@ -197,31 +193,27 @@ bool IOCPSocketSERVER::New_SOCKET(SOCKET hSocket, sockaddr_in &SockADDR)
 		return false;
 
 	pSOCKET->Init_SCOKET();
-	this->Lock();
 	int completionKey = lastSocket.fetch_add(1) + 1;
-	this->Unlock();
 
 	pSOCKET->m_Socket = hSocket;
 	pSOCKET->m_IP.Set(szIP);
 	pSOCKET->m_HashKeyIP = ipHashKEY;
 
+	pSOCKET->m_iSocketIDX = completionKey;
+
 	if(!m_IOCP.LinkPort((HANDLE)hSocket, completionKey)
 		|| eRESULT_PACKET_OK != pSOCKET->Recv_Start())
 	{
-		this->Lock();
-		{
-			// @버그 수정 : 2004. 7. 16 iSocketIDX대신
-			// pSOCKET->m_iSocketIDX로 사용했던 실수가 있었음.
-			// 아미 메모리 풀이 중복 해제되는 원인으루 추정됨...
-			lastSocket.fetch_sub(1);
-			// lock 외부에 있던거 안으로...
-			// Shutdown함수호출시에서 Accept, Worker쓰레드가 종료되어 Free..함수가 호출될경우
-			// ShutdownSocket과 충돌...
-			this->FreeClientSOCKET(pSOCKET);
+		// @버그 수정 : 2004. 7. 16 iSocketIDX대신
+		// pSOCKET->m_iSocketIDX로 사용했던 실수가 있었음.
+		// 아미 메모리 풀이 중복 해제되는 원인으루 추정됨...
+		lastSocket.fetch_sub(1);
+		// lock 외부에 있던거 안으로...
+		// Shutdown함수호출시에서 Accept, Worker쓰레드가 종료되어 Free..함수가 호출될경우
+		// ShutdownSocket과 충돌...
+		this->FreeClientSOCKET(pSOCKET);
 
-			g_LOG.CS_ODS(0xffff, "Failed to create new socket.\n");
-		}
-		this->Unlock();
+		g_LOG.CS_ODS(0xffff, "Failed to create new socket.\n");
 
 		return false;
 	}
@@ -232,15 +224,14 @@ bool IOCPSocketSERVER::New_SOCKET(SOCKET hSocket, sockaddr_in &SockADDR)
 	{
 		pSOCKET->m_dwConnTIME = ::timeGetTime();
 
-		this->Lock();
 		{
+			std::lock_guard<std::mutex> guard(lock);
 			sockets.emplace(completionKey, pSOCKET);
 		}
-		this->Unlock();
 	}
 
-	this->Lock();
 	{
+		std::lock_guard<std::mutex> guard(lock);
 		auto deleter = [this](iocpSOCKET *socket)
 		{
 			FreeClientSOCKET(socket);
@@ -248,9 +239,7 @@ bool IOCPSocketSERVER::New_SOCKET(SOCKET hSocket, sockaddr_in &SockADDR)
 		decltype(allSockets)::value_type::second_type ptr(pSOCKET, deleter);
 		allSockets.emplace(completionKey, std::move(ptr));
 	}
-	this->Unlock();
 
-	pSOCKET->m_iSocketIDX = completionKey;
 	this->InitClientSOCKET(pSOCKET);
 
 	return true;
@@ -261,23 +250,21 @@ bool IOCPSocketSERVER::New_SOCKET(SOCKET hSocket, sockaddr_in &SockADDR)
 // IOCPSocketSERVER::On_TRUE() 에서 호출됨
 void IOCPSocketSERVER::Del_SOCKET(int iSocketIDX)
 {
-	this->Lock();
+	std::lock_guard<std::mutex> guard(lock);
+
+	auto it = allSockets.find(iSocketIDX);
+	if(it != allSockets.end())
 	{
-		auto it = allSockets.find(iSocketIDX);
-		if(it != allSockets.end())
-		{
-			auto &socket = it->second;
-			sockets.erase(socket->m_iSocketIDX);
-			socket->m_iSocketIDX = 0;
-			socket->CloseSocket();
-			allSockets.erase(it);
-		}
-		else
-		{
-			g_LOG.CS_ODS(0xffff, "Unable to delete socket: %d.\n", iSocketIDX);
-		}
+		auto &socket = it->second;
+		sockets.erase(socket->m_iSocketIDX);
+		socket->m_iSocketIDX = 0;
+		socket->CloseSocket();
+		allSockets.erase(it);
 	}
-	this->Unlock();
+	else
+	{
+		g_LOG.CS_ODS(0xffff, "Unable to delete socket: %d.\n", iSocketIDX);
+	}
 }
 
 // 소켓 종료..
