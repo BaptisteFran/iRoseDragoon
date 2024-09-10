@@ -95,8 +95,6 @@ void CIocpTHREAD::Execute()
 			break;
 		}
 
-		g_LOG.CS_ODS(0xffff, "Completed a read/write on a socket... OVERLAPPED: %p\n", lpOverlapped);
-
 		if(0 == dwBytesIO)
 		{
 			g_LOG.CS_ODS(0xffff, "Returning false...");
