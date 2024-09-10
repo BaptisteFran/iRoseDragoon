@@ -17,3 +17,5 @@ Server/Server Data/3DDATA*
 
 # Misc files
 **/*.log
+**/*.inc
+**/zz_build_count
