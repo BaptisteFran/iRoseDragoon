@@ -1,10 +1,13 @@
 #ifndef	__CLASSODBC_H
 #define	__CLASSODBC_H
-//-------------------------------------------------------------------------------------------------
+
+#include <Windows.h>
+
 #include <sql.h>
 #include <sqlext.h>
 #include <sqltypes.h>
 #include <odbcss.h>
+
 #include "classSQL.h"
 #include "classSTR.h"
 //-------------------------------------------------------------------------------------------------

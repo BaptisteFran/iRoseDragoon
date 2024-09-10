@@ -69,7 +69,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\..\..\include;$(SolutionDir)Tools\TriggerVFS\include;$(SolutionDir)LIB_Util;$(SolutionDir)3rdParty\lua-5.0\include;$(SolutionDir)3rdParty\DX_SDK\Include;$(SolutionDir)3rdParty\zlib123;$(SolutionDir)3rdParty\zlib123\contrib\minizip;$(SolutionDir)3rdParty\nvtristrip\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_NONSTDC_NO_WARNINGS;_USRDLL;ZZ_DLL_EXPORT;_CRT_SECURE_NO_WARNINGS;ZZ_LUA500;_DEBUG;XXXZZ_MEM_ON;D3D_DEBUG_INFO;%(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_NONSTDC_NO_WARNINGS;_USRDLL;ZZ_DLL_EXPORT;_CRT_SECURE_NO_WARNINGS;ZZ_LUA500;NOMINMAX;_DEBUG;XXXZZ_MEM_ON;D3D_DEBUG_INFO;%(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader />
@@ -118,7 +118,7 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\..\..\include;$(SolutionDir)Tools\TriggerVFS\include;$(SolutionDir)LIB_Util;$(SolutionDir)3rdParty\lua-5.0\include;$(SolutionDir)3rdParty\DX_SDK\Include;$(SolutionDir)3rdParty\zlib123;$(SolutionDir)3rdParty\zlib123\contrib\minizip;$(SolutionDir)3rdParty\nvtristrip\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_NONSTDC_NO_WARNINGS;_USRDLL;ZZ_DLL_EXPORT;_CRT_SECURE_NO_WARNINGS;ZZ_LUA500;NDEBUG;%(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_NONSTDC_NO_WARNINGS;_USRDLL;ZZ_DLL_EXPORT;_CRT_SECURE_NO_WARNINGS;ZZ_LUA500;NOMINMAX;NDEBUG;%(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeader />
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>

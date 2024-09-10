@@ -3,6 +3,11 @@
 */
 #ifndef	__CD3DUTIL_H
 #define	__CD3DUTIL_H
+
+#include <cmath>
+
+#include <algorithm>
+
 //-------------------------------------------------------------------------------------------------
 ///
 /// Sprite와 거리관련 Wrapper Class 
@@ -54,7 +59,7 @@ public  :
 		iX1 = abs( iX2-iX1 );
 		iY1 = abs( iY2-iY1 );
 
-		int mn = min(iX1, iY1);
+		int mn = std::min(iX1, iY1);
 		return (iX1+iY1-(mn>>1)-(mn>>2)+(mn>>4));
 	}
 
@@ -67,7 +72,7 @@ public  :
 	{
 		iX = (iX < 0) ? -iX : iX;
 		iY = (iY < 0) ? -iY : iY;
-		int mn = min(iX, iY);
+		int mn = std::min(iX, iY);
 		return (iX+iY-(mn>>1)-(mn>>2)+(mn>>4));
 	}
 } ;

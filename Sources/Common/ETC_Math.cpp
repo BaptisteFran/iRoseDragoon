@@ -3,8 +3,12 @@
 */
 
 #include "stdAFX.h"
-#include "ETC_Math.h"
 
+#include <cmath>
+
+#include <algorithm>
+
+#include "ETC_Math.h"
 
 //-------------------------------------------------------------------------------------------------
 float	distance (tPOINTF &From, tPOINTF &To)
@@ -29,7 +33,7 @@ int		distance (int iX1, int iY1, int iX2, int iY2)
     iX1 = abs( iX2-iX1 );
     iY1 = abs( iY2-iY1 );
 
-    int mn = min(iX1, iY1);
+    int mn = std::min(iX1, iY1);
     return (iX1+iY1-(mn>>1)-(mn>>2)+(mn>>4));
 }
 

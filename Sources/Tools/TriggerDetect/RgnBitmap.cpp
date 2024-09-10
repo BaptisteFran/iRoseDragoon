@@ -11,6 +11,8 @@
 
 #include "stdafx.h"
 
+#include <algorithm>
+
 #include "RgnBitmap.h"
 
 
@@ -110,9 +112,9 @@ HRGN CRgnBitmap::BitmapToRegion( HBITMAP hBmp, COLORREF cTransparentColor /*= 0*
 					BYTE lr = GetRValue(cTransparentColor);
 					BYTE lg = GetGValue(cTransparentColor);
 					BYTE lb = GetBValue(cTransparentColor);
-					BYTE hr = min(0xff, lr + GetRValue(cTolerance));
-					BYTE hg = min(0xff, lg + GetGValue(cTolerance));
-					BYTE hb = min(0xff, lb + GetBValue(cTolerance));
+					BYTE hr = std::min(0xff, lr + GetRValue(cTolerance));
+					BYTE hg = std::min(0xff, lg + GetGValue(cTolerance));
+					BYTE hb = std::min(0xff, lb + GetBValue(cTolerance));
 
 					// Scan each bitmap row from bottom to top (the bitmap is inverted vertically)
 					BYTE *p32 = (BYTE *)bm32.bmBits + (bm32.bmHeight - 1) * bm32.bmWidthBytes;

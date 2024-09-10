@@ -1,10 +1,13 @@
+#include "classODBC.h"
+
+#include <cstdio>
+#include <algorithm>
+#include <string>
+
 #include <windows.h>
 #include <tchar.h>
 #include <crtdbg.h>
-#include <stdio.h>
-#include <string>
 
-#include "classODBC.h"
 #include "classLOG.h"
 
 classODBC::classODBC (short nBindParamCNT, WORD wQueryBufferLEN)
@@ -503,7 +506,7 @@ bool classODBC::QuerySQLBuffer ( /* bool bBindResult */ )
 			}
 
 			for (uiPtr=0; uiPtr<m_pBindPARAM[ iParamNo ].m_uiDataSize; uiPtr+=MAX_ODBC_COLUMN_LEN) {
-				uiLen = min( (ULONG)MAX_ODBC_COLUMN_LEN, m_pBindPARAM[ iParamNo ].m_uiDataSize-uiPtr );
+				uiLen = std::min( (ULONG)MAX_ODBC_COLUMN_LEN, m_pBindPARAM[ iParamNo ].m_uiDataSize-uiPtr );
 				::SQLPutData (m_hSTMT1, &m_pBindPARAM[ iParamNo ].m_pDATA[ uiPtr ], uiLen);
 			}
 
@@ -587,7 +590,7 @@ int classODBC::ExecSQLBuffer ()
 			*/
 			iParamNo = (int)pBLOB_ID;
 			for (uiPtr=0; uiPtr<m_pBindPARAM[ iParamNo ].m_uiDataSize; uiPtr+=MAX_ODBC_COLUMN_LEN) {
-				uiLen = min( (ULONG)MAX_ODBC_COLUMN_LEN, m_pBindPARAM[ iParamNo ].m_uiDataSize-uiPtr );
+				uiLen = std::min( (ULONG)MAX_ODBC_COLUMN_LEN, m_pBindPARAM[ iParamNo ].m_uiDataSize-uiPtr );
 				::SQLPutData (m_hSTMT1, &m_pBindPARAM[ iParamNo ].m_pDATA[ uiPtr ], uiLen);
 			}
 
