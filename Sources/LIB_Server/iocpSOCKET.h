@@ -103,9 +103,9 @@ public:
 
 	static void Free_RecvIODATA(tagIO_DATA *pRecvDATA)
 	{
-		/*assert(pRecvDATA->m_pCPacket->GetRefCnt() == 1);
+		assert(pRecvDATA->m_pCPacket->GetRefCnt() == 1);
 
-		delete pRecvDATA->m_pCPacket;*/
+		delete pRecvDATA->m_pCPacket;
 		delete pRecvDATA;
 	}
 

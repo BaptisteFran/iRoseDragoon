@@ -282,16 +282,14 @@ void IOCPSocketSERVER::On_FALSE(LPOVERLAPPED lpOverlapped, DWORD dwCompletionKey
 	switch(pIOData->m_IOmode)
 	{
 	case ioREAD:
+	{
 		// ioWRITE 일경우에는 pUSER->m_SendList에 노드가 이미 등록되어 있어 SubUser()에서 풀림으로 ioREAD일 때만...
-		//iocpSOCKET::Free_RecvIODATA(pIOData);
-		if(allSockets.size())
-			allSockets[lastSocket]->PopRecvIO(pIOData);
-		break;
+		iocpSOCKET::Free_RecvIODATA(pIOData);
+	} break;
 	case ioWRITE:
 		break;
 	default:
-		//assert(false);
-		;
+		assert(false);
 	}
 
 	this->Del_SOCKET(dwCompletionKey);
@@ -319,7 +317,7 @@ void IOCPSocketSERVER::On_TRUE(
 			{
 			case eRESULT_PACKET_DISCONNECT:
 				// 짤러라 !!!
-				g_LOG.CS_ODS(0xffff, "Deleting socket...");
+				g_LOG.CS_ODS(0xffff, "Deleting socket...\n");
 				this->Del_SOCKET(dwCompletionKey);
 				break;
 			}

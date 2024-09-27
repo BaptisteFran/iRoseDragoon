@@ -9003,8 +9003,9 @@ int	 classUSER::Proc(void)
 
 	{
 		std::lock_guard<std::mutex> lock(m_csRecvQ);
-		assert(m_RecvList.size() > 0);
-		tagIO_DATA *pRecvNODE = m_RecvList.front().get();
+		tagIO_DATA *pRecvNODE = nullptr;
+		if(m_RecvList.size() > 0)
+			pRecvNODE = m_RecvList.front().get();
 
 		while(pRecvNODE)
 		{
@@ -9053,7 +9054,10 @@ int	 classUSER::Proc(void)
 			} while(pRecvNODE->m_dwIOBytes);
 
 			m_RecvList.pop();
-			pRecvNODE = m_RecvList.front().get();
+			if(m_RecvList.size() > 0)
+				pRecvNODE = m_RecvList.front().get();
+			else
+				pRecvNODE = nullptr;
 		}
 	}
 

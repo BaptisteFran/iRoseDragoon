@@ -73,6 +73,8 @@ void iocpSOCKET::Clear_LIST(void)
 // pRecvNode에 이어 받기.
 ePacketRECV iocpSOCKET::Recv_Continue(tagIO_DATA *pRecvDATA)
 {
+	assert(pRecvDATA->m_pCPacket->GetRefCnt() == 1);
+
 	g_LOG.CS_ODS(
 		0xffff,
 		"* Starting IO (Read): Completion key: %d\n",
@@ -130,9 +132,7 @@ ePacketRECV iocpSOCKET::Recv_Start (void)
 	assert(pRecvNODE->m_IOmode == ioREAD);
 	assert(pRecvNODE->m_dwIOBytes == 0);
 
-	m_RecvList.emplace(pRecvNODE);
-
-	ret = this->Recv_Continue(m_RecvList.front().get());
+	ret = this->Recv_Continue(pRecvNODE);
 
 	return ret;
 }
@@ -165,9 +165,7 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 				"*** ERROR: Decode recv packet header1, IP[ %s ]\n",
 				this->m_IP.Get());
 
-			assert(pRecvDATA == m_RecvList.front().get());
-			m_RecvList.pop();
-			//this->Free_RecvIODATA(pRecvDATA);
+			this->Free_RecvIODATA(pRecvDATA);
 
 			return eRESULT_PACKET_DISCONNECT;
 		}
@@ -182,9 +180,7 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 			"*** ERROR: MAX_PACKET_SIZE  recv packet header1, IP[ %s ]\n",
 			this->m_IP.Get());
 
-		assert(pRecvDATA == m_RecvList.front().get());
-		m_RecvList.pop();
-		//this->Free_RecvIODATA(pRecvDATA);
+		this->Free_RecvIODATA(pRecvDATA);
 
 		return eRESULT_PACKET_DISCONNECT;
 	}
@@ -194,9 +190,7 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 	// 서버가 멈추는 것을 막기위해서 _ASSERT() 대신 에러리턴
 	if(pRecvDATA->m_pCPacket->GetLength() < sizeof(t_PACKETHEADER))
 	{
-		assert(pRecvDATA == m_RecvList.front().get());
-		m_RecvList.pop();
-		//this->Free_RecvIODATA(pRecvDATA);
+		this->Free_RecvIODATA(pRecvDATA);
 
 		// 블랙 리스트에 ip 등록...
 		g_LOG.CS_ODS(0xffff, "*** ERROR: pRecvDATA->m_pCPacket->GetLength() < sizeof(t_PACKETHEADER), IP[ %s ]\n", this->m_IP.Get());
@@ -235,9 +229,7 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 			nPacketSIZE = this->D_RecvH(pHEADER);
 			if(0 == nPacketSIZE)
 			{
-				assert(pRecvDATA == m_RecvList.front().get());
-				m_RecvList.pop();
-				//this->Free_RecvIODATA(pRecvDATA);
+				this->Free_RecvIODATA(pRecvDATA);
 				g_LOG.CS_ODS(0xffff, "*** ERROR: Decode recv packet header2, IP[ %s ]\n", this->m_IP.Get());
 
 				// 블랙 리스트에 ip 등록...
@@ -278,12 +270,9 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 		// 앞부분의 완성 패킷등록.
 		pRecvDATA->m_dwIOBytes -= nRemainBytes;
 
-		m_RecvList.emplace(pNewNODE);
-
 		if(!this->Recv_Done(pRecvDATA))
 		{
 			// 2003. 11. 04 밑에 함수 추가... 빼먹어서 메모리 흘렸었음..
-			m_RecvList.pop();
 			return eRESULT_PACKET_DISCONNECT;//false;
 		}
 		return this->Recv_Continue(pNewNODE);	    			// 이어 받기.
@@ -462,7 +451,6 @@ bool iocpSOCKET::Send_Complete(tagIO_DATA *pSendDATA)
 bool iocpSOCKET::Recv_Done(tagIO_DATA *pRecvDATA)
 {
 	// 바로 처리하는 함수...
-	assert(pRecvDATA == m_RecvList.front().get());
 	t_PACKETHEADER *pPacket = (t_PACKETHEADER*)&pRecvDATA->m_pCPacket->m_pDATA;
 
 	do
@@ -477,8 +465,7 @@ bool iocpSOCKET::Recv_Done(tagIO_DATA *pRecvDATA)
 				"*** ERROR: Decode recv packet body, IP[ %s ]\n",
 				this->m_IP.Get());
 
-			m_RecvList.pop();
-			//this->Free_RecvIODATA(pRecvDATA);
+			this->Free_RecvIODATA(pRecvDATA);
 
 			// 블랙 리스트에 ip 등록...
 
@@ -487,8 +474,7 @@ bool iocpSOCKET::Recv_Done(tagIO_DATA *pRecvDATA)
 
 		if(!this->HandlePACKET(pPacket))
 		{
-			m_RecvList.pop();
-			//this->Free_RecvIODATA(pRecvDATA);
+			this->Free_RecvIODATA(pRecvDATA);
 			return false;
 		}
 
@@ -496,8 +482,7 @@ bool iocpSOCKET::Recv_Done(tagIO_DATA *pRecvDATA)
 		pPacket = (t_PACKETHEADER*)(pPacket->m_pDATA + nTotalPacketLEN);
 	} while(pRecvDATA->m_dwIOBytes);
 
-	m_RecvList.pop();
-	//this->Free_RecvIODATA(pRecvDATA);
+	this->Free_RecvIODATA(pRecvDATA);
 
 	return true;
 }
