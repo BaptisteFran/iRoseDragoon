@@ -717,7 +717,9 @@ void GS_CThreadSQL::Execute ()
 			#endif
 				{
 					// 모든 classUSER()는 GS_CThreadSQL::Execute 삭제된다...
-					g_pUserLIST->FreeClientSOCKET( pUsrNODE->DATA.m_pUSER );
+					// g_pUserLIST->FreeClientSOCKET( pUsrNODE->DATA.m_pUSER );
+					// This should already be deleted by the On_FALSE routine
+					// in the IOCPSocketServer.
 				}
 			}
 
