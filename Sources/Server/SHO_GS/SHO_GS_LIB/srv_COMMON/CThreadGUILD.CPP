@@ -1187,7 +1187,7 @@ bool CThreadGUILD::Run_GuildPACKET ( tagCLAN_CMD *pGuildCMD )
 						if ( !pFindUSER->CheckClanCreateCondition( 1 ) ) {	// 클랜 생성 시도시 생성된 조건 검증...
 							// 접속 종료된 넘...
 							this->Query_DeleteCLAN ( pClan->m_Name.Get() );
-							pFindUSER->UnlockSOCKET ();
+
 							return true;
 						}
 

@@ -69,10 +69,11 @@ void CUserLIST::FreeData (classUSER *pData)
 void CUserLIST::DeleteUSER (classUSER *pUSER, BYTE btLogOutMODE)
 {
 	// 같은 코드 여러번 실행되지 않도록..
-	pUSER->LockSOCKET ();
+	// CHECKME: Needs a lock?
+	//pUSER->LockSOCKET ();
 	{
 		if ( pUSER->m_btLogOutMODE ) {
-			pUSER->UnlockSOCKET ();
+			//pUSER->UnlockSOCKET ();
 			return;
 		}
 
@@ -81,7 +82,7 @@ void CUserLIST::DeleteUSER (classUSER *pUSER, BYTE btLogOutMODE)
 		if ( pUSER->m_iClanCreateMoney )
 			pUSER->CheckClanCreateCondition( 2 );	// 클랜 생성하다 종료 :: 감소된 조건 복원
 	}
-	pUSER->UnlockSOCKET ();
+	//pUSER->UnlockSOCKET ();
 
 	if ( pUSER->Is_CartDriver() || pUSER->Is_CartGuest() ) {
 		classUSER *pUser2 = (classUSER*)g_pUserLIST->GetSOCKET( pUSER->m_iLinkedCartUsrIDX );

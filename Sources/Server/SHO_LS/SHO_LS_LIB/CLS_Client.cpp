@@ -273,7 +273,6 @@ bool CLS_Client::Recv_mon_SERVER_LIST_REQ( t_PACKET *pPacket, bool bHideIP )
 	this->Send_Start( pCPacket );
 
 #ifdef	__VIEW_ACCOUNT
-	this->LockSOCKET ();
 	if ( m_pCliListITEM ) {
 		if ( bHideIP ) {
 			SHO_LS::ExeAPI()->DelConnectorITEM( this->m_pCliListITEM );
@@ -281,7 +280,6 @@ bool CLS_Client::Recv_mon_SERVER_LIST_REQ( t_PACKET *pPacket, bool bHideIP )
 		} //else  
 			//SHO_LS::ExeAPI()->SetListItemSTR( m_pCliListITEM, -1, "<<monitor>>" );
 	}
-	this->UnlockSOCKET ();
 #endif
 
 	return true;
@@ -500,9 +498,7 @@ void CLS_ListCLIENT::InitClientSOCKET( iocpSOCKET *pCLIENT )
 //	assert( iOptVal == 1 );	irose에서 발생하는데 왜 그런지 몰라..
 
 #ifdef	__VIEW_ACCOUNT
-	pCLIENT->LockSOCKET();
 	( (CLS_Client*)pCLIENT )->m_pCliListITEM = SHO_LS::ExeAPI()->AddConnectorITEM( pCLIENT, pCLIENT->m_IP.Get()  );
-	pCLIENT->UnlockSOCKET();
 #endif
 }
 //-------------------------------------------------------------------------------------------------

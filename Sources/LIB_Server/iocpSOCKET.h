@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <memory>
+#include <mutex>
 #include <queue>
 
 #include <winsock.h>
@@ -26,16 +27,6 @@ public:
 
 	iocpSOCKET();
 	virtual ~iocpSOCKET();
-
-	void LockSOCKET()
-	{
-		m_csSOCKET.Lock();
-	}
-
-	void UnlockSOCKET()
-	{
-		m_csSOCKET.Unlock();
-	}
 
 	void Init_SCOKET()
 	{
@@ -170,11 +161,10 @@ private:
 
 	bool Send_Continue(tagIO_DATA *pSendDATA);
 
-	CCriticalSection			m_csSOCKET;
-
 protected:
-	CCriticalSection			m_csSendQ;
-	CCriticalSection			m_csRecvQ;
+	std::mutex m_csSOCKET;
+	std::mutex m_csSendQ;
+	std::mutex m_csRecvQ;
 
 	struct SendDeleter
 	{

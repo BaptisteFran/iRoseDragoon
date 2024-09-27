@@ -86,11 +86,10 @@ public :
 	void Set_ACCOUNT(char *szAccount, DWORD *pMD5Pass)
 	{
 #ifdef	__VIEW_ACCOUNT
-		this->LockSOCKET ();
-		if ( m_pCliListITEM ) {
-			SHO_LS::ExeAPI()->SetListItemSTR( m_pCliListITEM, -1, szAccount );
-		}
-		this->UnlockSOCKET ();
+	if(m_pCliListITEM)
+	{
+		SHO_LS::ExeAPI()->SetListItemSTR(m_pCliListITEM, -1, szAccount);
+	}
 #endif
 		m_Account.Set( szAccount );
         ::CopyMemory( m_dwMD5Pass, pMD5Pass, sizeof(DWORD)*8 );
@@ -206,12 +205,11 @@ public :
 		this->m_CS.Unlock ();
 
 #ifdef	__VIEW_ACCOUNT
-		pClient->LockSOCKET();
-		if ( pClient->m_pCliListITEM ) {
-			SHO_LS::ExeAPI()->DelConnectorITEM( pClient->m_pCliListITEM );
+		if(pClient->m_pCliListITEM)
+		{
+			SHO_LS::ExeAPI()->DelConnectorITEM(pClient->m_pCliListITEM);
 			pClient->m_pCliListITEM = NULL;
 		}
-		pClient->UnlockSOCKET();
 #endif
 		//LogString (LOG_DEBUG, "    >>> Delete CLIENT socket : %s, %s UsedCnt: %d \n", 
 		//				pSOCKET->m_IP.Get(), 

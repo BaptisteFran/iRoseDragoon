@@ -147,12 +147,10 @@ public :
 	{
 		CLS_Server *pServer = (CLS_Server*)pSOCKET;
 
-		pServer->LockSOCKET ();
 		if ( pServer->m_pSrvListITEM ) {
 			SHO_LS::ExeAPI()->DelWorldITEM( pServer->m_pSrvListITEM );
 			pServer->m_pSrvListITEM = NULL;
 		}
-		pServer->UnlockSOCKET ();
 
 		this->LockLIST ();
 			m_LIST.DeleteNode( &pServer->m_ListNODE );

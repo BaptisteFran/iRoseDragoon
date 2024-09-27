@@ -61,12 +61,13 @@ void CWS_Server::Free ()
 			// m_ppChannelUSER[ nI ]를 받으시 pClient로 받고 아래 작업해야한다.
 			// 호출시 m_ppChannelUSER[ nI ] == NULL이 되기때문에...
 			pClient = m_ppChannelUSER[ nI ];
-			pClient->LockSOCKET ();
+			// CHECKME: Might need a lock?
+			//pClient->LockSOCKET ();
 			{
 				if ( 0 == g_pUserLIST->Del_ACCOUNT( pClient->Get_ACCOUNT(), BIT_LOGIN_GS, this ) )
 					pClient->m_HashACCOUNT = 0;
 			}
-			pClient->UnlockSOCKET ();
+			//pClient->UnlockSOCKET ();
 		}
 	}
 

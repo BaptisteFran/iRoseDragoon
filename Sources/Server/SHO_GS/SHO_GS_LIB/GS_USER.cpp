@@ -209,35 +209,40 @@ bool classUSER::CheckClanCreateCondition (char cStep)
 
 			g_pThreadLOG->When_gs_CLAN (this, "Start Create", NEWLOG_CLAN_CREATE_START );	// 돈 빼기전에..
 
-			this->LockSOCKET ();
-				this->Sub_CurMONEY( NEED_CLAN_CREATE_MONEY );
+			{
+				std::lock_guard<std::mutex> lock(m_csSOCKET);
+				this->Sub_CurMONEY(NEED_CLAN_CREATE_MONEY);
 				this->m_iClanCreateMoney = NEED_CLAN_CREATE_MONEY;
-			this->UnlockSOCKET ();
+			}
 			break;
 
 		case 1 :	// 생성시 
 		{
 			char szTmp[ 128 ];
-			this->LockSOCKET ();
-				if ( NEED_CLAN_CREATE_MONEY != this->m_iClanCreateMoney ) {
+			{
+				std::lock_guard<std::mutex> lock(m_csSOCKET);
+				if(NEED_CLAN_CREATE_MONEY != this->m_iClanCreateMoney)
+				{
 					bResult = false;
-					sprintf(szTmp, "Failed Create is Hacking?? NeedZuly: %d / %d", this->m_iClanCreateMoney, NEED_CLAN_CREATE_MONEY );
+					sprintf(szTmp, "Failed Create is Hacking?? NeedZuly: %d / %d", this->m_iClanCreateMoney, NEED_CLAN_CREATE_MONEY);
 				}
 				this->m_iClanCreateMoney = 0;
-			this->UnlockSOCKET ();
+			}
 
 			g_pThreadLOG->When_gs_CLAN (this, ( bResult ) ? "Success Create" : szTmp, ( bResult )?NEWLOG_CLAN_CREATE_SUCCESS:NEWLOG_CLAN_CREATE_FAILED );
 			break;
 		}
 
-		case 2 :	// 생성 실패
-			g_pThreadLOG->When_gs_CLAN (this, "Failed Create", NEWLOG_CLAN_CREATE_FAILED );	// 돈 복구한 후에...
+		case 2:	// 생성 실패
+		{
+			g_pThreadLOG->When_gs_CLAN(this, "Failed Create", NEWLOG_CLAN_CREATE_FAILED);	// 돈 복구한 후에...
 
-			this->LockSOCKET ();
-				this->Add_CurMONEY( this->m_iClanCreateMoney );
+			{
+				std::lock_guard<std::mutex> lock(m_csSOCKET);
+				this->Add_CurMONEY(this->m_iClanCreateMoney);
 				this->m_iClanCreateMoney = 0;
-			this->UnlockSOCKET ();
-			break;
+			}
+		} break;
 	}
 
 	return bResult;
@@ -8862,11 +8867,8 @@ bool classUSER::Recv_Done (tagIO_DATA *pRecvDATA)
 		return iocpSOCKET::Recv_Done( pRecvDATA );
 	}
 
-    m_csRecvQ.Lock ();
-    {
-        m_RecvList.emplace(pRecvDATA);
-    }
-	m_csRecvQ.Unlock ();
+	std::lock_guard<std::mutex> lock(m_csRecvQ);
+	m_RecvList.emplace(pRecvDATA);
 
     return true;
 }
@@ -8916,8 +8918,9 @@ int  classUSER::ProcLogOUT()
 		this->Check_PerFRAME(this->GetZONE()->GetPassTIME());
 
 	// 취소 패킷이 왔는가 ????
-	m_csRecvQ.Lock();
 	{
+		std::lock_guard<std::mutex> lock(m_csRecvQ);
+
 		tagIO_DATA *pRecvNODE = m_RecvList.front().get();
 
 		while(pRecvNODE)
@@ -8930,7 +8933,6 @@ int  classUSER::ProcLogOUT()
 				{
 					// 패킷이 변조되어 왔다.
 					// 헤킹인가 ???
-					m_csRecvQ.Unlock();
 					IS_HACKING(this, "classUSER::Proc( Decode_Recv ... )");
 					return 0;
 				}
@@ -8941,7 +8943,6 @@ int  classUSER::ProcLogOUT()
 					this->m_dwTimeToLogOUT = 0;
 
 					m_RecvList.pop();
-					m_csRecvQ.Unlock();
 					return 1;
 				}
 
@@ -8953,7 +8954,6 @@ int  classUSER::ProcLogOUT()
 			pRecvNODE = m_RecvList.front().get();
 		}
 	}
-	m_csRecvQ.Unlock();
 
 	return 1;
 }
@@ -9001,8 +9001,9 @@ int	 classUSER::Proc(void)
 
 	this->HandleWorldPACKET();
 
-	m_csRecvQ.Lock();
 	{
+		std::lock_guard<std::mutex> lock(m_csRecvQ);
+		assert(m_RecvList.size() > 0);
 		tagIO_DATA *pRecvNODE = m_RecvList.front().get();
 
 		while(pRecvNODE)
@@ -9015,7 +9016,6 @@ int	 classUSER::Proc(void)
 				{
 					// 패킷이 변조되어 왔다.
 					// 헤킹인가 ???
-					m_csRecvQ.Unlock();
 					IS_HACKING(this, "classUSER::Proc( Decode_Recv ... )");
 					return 0;
 				}
@@ -9038,13 +9038,12 @@ int	 classUSER::Proc(void)
 						for(WORD wI = 0; wI < pRecvNODE->m_dwIOBytes; wI++)
 							pRecvNODE->m_pCPacket->m_pDATA[wI] = pPacket->m_pDATA[wI];
 					}
-					m_csRecvQ.Unlock();
+
 					return 1;
 				}
 				case RET_FAILED:
 				{
 					// 짜를 넘...
-					m_csRecvQ.Unlock();
 					return 0;
 				}
 				} // switch ( this->Proc_ZonePACKET( (t_PACKET*)pPacket ) )
@@ -9057,9 +9056,6 @@ int	 classUSER::Proc(void)
 			pRecvNODE = m_RecvList.front().get();
 		}
 	}
-
-	m_csRecvQ.Unlock();
-
 
 #if defined(__N_PROTECT) && !defined(__NORTHUSA)
 	if(this->GetZONE()->GetTimeGetTIME() - this->m_dwCSASendTime >= 10000 /* 3 * 60 * 1000 */)

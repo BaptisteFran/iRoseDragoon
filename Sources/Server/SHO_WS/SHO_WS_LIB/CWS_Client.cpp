@@ -784,12 +784,13 @@ void CWS_ListCLIENT::ClosedClientSOCKET( iocpSOCKET *pSOCKET )
 	CWS_Client *pClient = (CWS_Client*)pSOCKET;
 
 	if ( pClient->m_pAccount ) {
-		pClient->LockSOCKET();
+		// CHECKME: Might need a lock?
+		//pClient->LockSOCKET();
 		{
 			if ( 0 == this->Del_ACCOUNT( pClient->Get_ACCOUNT(), BIT_LOGIN_WS ) )
 				pClient->m_HashACCOUNT = 0;
 		}
-		pClient->UnlockSOCKET();
+		//pClient->UnlockSOCKET();
 	}
 
 	this->FreeClientSOCKET( pSOCKET );

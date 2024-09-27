@@ -21,7 +21,7 @@ iocpSOCKET::iocpSOCKET()
 	, m_dwConnTIME(0)
 	, m_csSOCKET()
 	, m_csSendQ()
-	, m_csRecvQ(4000)
+	, m_csRecvQ()
 	, m_SendList()
 	, m_bWritable(true)
 	, m_RecvList()
@@ -57,19 +57,17 @@ void iocpSOCKET::CloseSocket(void)
 
 void iocpSOCKET::Clear_LIST(void)
 {
-	m_csRecvQ.Lock();
 	{
+		std::lock_guard<std::mutex> lock(m_csRecvQ);
 		while(!m_RecvList.empty())
 			m_RecvList.pop();
 	}
-	m_csRecvQ.Unlock();
 
-	m_csSendQ.Lock();
 	{
+		std::lock_guard<std::mutex> lock(m_csSendQ);
 		while(!m_SendList.empty())
 			m_SendList.pop();
 	}
-	m_csSendQ.Unlock();
 }
 
 // pRecvNode에 이어 받기.
@@ -122,20 +120,19 @@ ePacketRECV iocpSOCKET::Recv_Continue(tagIO_DATA *pRecvDATA)
 ePacketRECV iocpSOCKET::Recv_Start (void)
 {
 	ePacketRECV ret = ePacketRECV::eRESULT_PACKET_DISCONNECT;
-	m_csRecvQ.Lock();
-	{
-		tagIO_DATA *pRecvNODE = this->Alloc_RecvIODATA();
-		if(NULL == pRecvNODE)
-			return eRESULT_PACKET_DISCONNECT;
 
-		assert(pRecvNODE->m_IOmode == ioREAD);
-		assert(pRecvNODE->m_dwIOBytes == 0);
+	std::lock_guard<std::mutex> lock(m_csRecvQ);
 
-		m_RecvList.emplace(pRecvNODE);
+	tagIO_DATA *pRecvNODE = this->Alloc_RecvIODATA();
+	if(NULL == pRecvNODE)
+		return eRESULT_PACKET_DISCONNECT;
 
-		ret = this->Recv_Continue(m_RecvList.front().get());
-	}
-	m_csRecvQ.Unlock();
+	assert(pRecvNODE->m_IOmode == ioREAD);
+	assert(pRecvNODE->m_dwIOBytes == 0);
+
+	m_RecvList.emplace(pRecvNODE);
+
+	ret = this->Recv_Continue(m_RecvList.front().get());
 
 	return ret;
 }
@@ -145,8 +142,7 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 {
 	ePacketRECV eResult;
 
-	g_LOG.CS_ODS(0xffff, "Locking socket...\n");
-	this->LockSOCKET();
+	std::lock_guard<std::mutex> lock(m_csSOCKET);
 
 	if(pRecvDATA->m_dwIOBytes < sizeof(t_PACKETHEADER))
 	{
@@ -154,8 +150,6 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 		assert(0 == pRecvDATA->m_pCPacket->GetLength());
 		// 최소 크기의 패킷 받기...
 		eResult = this->Recv_Continue(pRecvDATA);	// 이어 받기.
-		g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
-		this->UnlockSOCKET();
 		return eResult;
 	}
 
@@ -171,8 +165,6 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 				"*** ERROR: Decode recv packet header1, IP[ %s ]\n",
 				this->m_IP.Get());
 
-			g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
-			this->UnlockSOCKET();
 			assert(pRecvDATA == m_RecvList.front().get());
 			m_RecvList.pop();
 			//this->Free_RecvIODATA(pRecvDATA);
@@ -190,8 +182,6 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 			"*** ERROR: MAX_PACKET_SIZE  recv packet header1, IP[ %s ]\n",
 			this->m_IP.Get());
 
-		g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
-		this->UnlockSOCKET();
 		assert(pRecvDATA == m_RecvList.front().get());
 		m_RecvList.pop();
 		//this->Free_RecvIODATA(pRecvDATA);
@@ -204,8 +194,6 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 	// 서버가 멈추는 것을 막기위해서 _ASSERT() 대신 에러리턴
 	if(pRecvDATA->m_pCPacket->GetLength() < sizeof(t_PACKETHEADER))
 	{
-		g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
-		this->UnlockSOCKET();
 		assert(pRecvDATA == m_RecvList.front().get());
 		m_RecvList.pop();
 		//this->Free_RecvIODATA(pRecvDATA);
@@ -218,16 +206,13 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 	if((short)pRecvDATA->m_dwIOBytes < pRecvDATA->m_pCPacket->GetLength())
 	{
 		eResult = this->Recv_Continue(pRecvDATA);	// 이어 받기.
-		g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
-		this->UnlockSOCKET();
+
 		return eResult;
 	}
 	else
 	{
 		if((short)pRecvDATA->m_dwIOBytes == pRecvDATA->m_pCPacket->GetLength())
 		{
-			g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
-			this->UnlockSOCKET();
 			if(!this->Recv_Done(pRecvDATA))		// Free_RecvIODATA( pRecvDATA ); <-- Recv_done에서 호출되어옴
 				return eRESULT_PACKET_DISCONNECT;//false;
 			return this->Recv_Start();	// RecvComplete
@@ -250,8 +235,6 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 			nPacketSIZE = this->D_RecvH(pHEADER);
 			if(0 == nPacketSIZE)
 			{
-				g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
-				this->UnlockSOCKET();
 				assert(pRecvDATA == m_RecvList.front().get());
 				m_RecvList.pop();
 				//this->Free_RecvIODATA(pRecvDATA);
@@ -264,8 +247,6 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 
 		if(nRemainBytes == nPacketSIZE)
 		{
-			g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
-			this->UnlockSOCKET();
 			if(!this->Recv_Done(pRecvDATA))		// 완성 패킷 추가, Free_RecvIODATA( pRecvDATA );<-- Recv_done에서 호출되어옴
 				return eRESULT_PACKET_DISCONNECT;//false;
 			return this->Recv_Start();					// 새로 받기. :: RecvComplete
@@ -299,12 +280,10 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 
 		m_RecvList.emplace(pNewNODE);
 
-		g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
-		this->UnlockSOCKET();
 		if(!this->Recv_Done(pRecvDATA))
 		{
 			// 2003. 11. 04 밑에 함수 추가... 빼먹어서 메모리 흘렸었음..
-			this->Free_RecvIODATA(pNewNODE);
+			m_RecvList.pop();
 			return eRESULT_PACKET_DISCONNECT;//false;
 		}
 		return this->Recv_Continue(pNewNODE);	    			// 이어 받기.
@@ -312,8 +291,6 @@ ePacketRECV iocpSOCKET::Recv_Complete(tagIO_DATA *pRecvDATA)
 
 	eResult = eRESULT_PACKET_DISCONNECT;//false;
 
-	g_LOG.CS_ODS(0xffff, "Unlocking socket...\n");
-	this->UnlockSOCKET();
 	return eResult;
 }
 
@@ -379,47 +356,43 @@ bool iocpSOCKET::Send_Start(classPACKET *pCPacket)
 	assert(pSendNODE->m_pCPacket->GetLength() >= sizeof(t_PACKETHEADER));
 	assert(pSendNODE->m_pCPacket->GetLength() <= MAX_PACKET_SIZE);
 
-	m_csSendQ.Lock();
+	std::lock_guard<std::mutex> lock(m_csSendQ);
+
+	m_SendList.emplace(pSendNODE);
+
+	if(m_bWritable)
 	{
-		m_SendList.emplace(pSendNODE);
-
-		if(m_bWritable)
+		pSendNODE = m_SendList.back().get();
+		if(!Send_Continue(pSendNODE))
 		{
-			pSendNODE = m_SendList.back().get();
-			if(!Send_Continue(pSendNODE))
-			{
-				m_csSendQ.Unlock();
-				CloseSocket();
-				return false;
-			}
+			CloseSocket();
+			return false;
 		}
-		else
+	}
+	else
+	{
+		size_t const iQedCnt = m_SendList.size();
+		if(iQedCnt > 100)
 		{
-			size_t const iQedCnt = m_SendList.size();
-			if(iQedCnt > 100)
+			// 보내기 시도한 후 아직까지 다음 패킷을 보내지 못하고 있는넘...
+			// 패킷을 쌓놓고 있다면 짤라버려야지...
+			DWORD dwPassTime = ::timeGetTime() - this->m_dwCheckTIME;
+			if(dwPassTime >= 30 * 1000 || iQedCnt > 1000)
 			{
-				// 보내기 시도한 후 아직까지 다음 패킷을 보내지 못하고 있는넘...
-				// 패킷을 쌓놓고 있다면 짤라버려야지...
-				DWORD dwPassTime = ::timeGetTime() - this->m_dwCheckTIME;
-				if(dwPassTime >= 30 * 1000 || iQedCnt > 1000)
-				{
-					g_LOG.CS_ODS(
-						0xffff,
-						">>Sending timeout: packet: %d, time: %d, IP:%s\n",
-						iQedCnt,
-						dwPassTime,
-						this->Get_IP());
+				g_LOG.CS_ODS(
+					0xffff,
+					">>Sending timeout: packet: %d, time: %d, IP:%s\n",
+					iQedCnt,
+					dwPassTime,
+					this->Get_IP());
 
-					m_csSendQ.Unlock();
-					CloseSocket();
+				CloseSocket();
 
-					return false;
-				}
+				return false;
 			}
 		}
 	}
 
-	m_csSendQ.Unlock();
 	return true;
 }
 
@@ -428,64 +401,60 @@ bool iocpSOCKET::Send_Start(classPACKET *pCPacket)
 // CThreadWORKER::STATUS_ReturnTRUE() 에서만 호출된다.
 bool iocpSOCKET::Send_Complete(tagIO_DATA *pSendDATA)
 {
-	m_csSendQ.Lock();
+	std::lock_guard<std::mutex> lock(m_csSendQ);
+
+	if(0 == this->m_iSocketIDX) // 종료됐다.
 	{
-		if(0 == this->m_iSocketIDX) // 종료됐다.
+		// 2004. 10. 3...
+		// _ASSERT( pHeadNODE == pSendDATA->m_pNODE ); 에서 오류 발생...
+		// m_SendList.GetNodeCount() == 0인상태에서 이리로 들어 와서 뻑~~~
+		// this->m_iSocketIDX = 0이고, pSendDATA->m_dwIOBytes = 0, pSendDATA->m_pCPacket->GetLength()=10 이었지만
+		// 아래 pSendDATA->m_dwIOBytes == (WORD)pSendDATA->m_pCPacket->GetLength() 조건을 통과했다.
+		// 1. 동시에 여러 워커 쓰래드에서 IO발생
+		// 2. 다른 워커쓰레드에서 소켓 종료 => m_SendList초기화 됨( 현재 pSendDATA가 Pool에 반납됨 )
+		// 3. 현재 워커쓰레드에서 이 함수로 접근pSendDATA->m_dwIOBytes == (WORD)pSendDATA->m_pCPacket->GetLength() 조건통과.
+		// 4. 다른 소켓에의해 pSendDATA가 할당, 최기화됨.
+		// 5. 현재 워커쓰레드 뻑~~~
+		return false;
+	}
+
+	this->m_bWritable = true;
+	if(pSendDATA->m_dwIOBytes == pSendDATA->m_pCPacket->GetLength()) // 전체 전송 완료..
+	{
+		// ** 아래 라인에서 m_SendList에서 pSendNode를 삭제하는 과정에서
+		//    오류가 난것은 pUSER가 이미 접속종료되어 ClearIOList() 함수를
+		//    실행하여 m_SendList가 이미 비어있기 때문이다.
+		tagIO_DATA *pHeadNODE = m_SendList.front().get();
+		assert(pHeadNODE == pSendDATA);
+
+		m_SendList.pop();
+
+		tagIO_DATA *pSendNODE = m_SendList.size() > 0 ? m_SendList.front().get() : nullptr;
+		if(pSendNODE)
 		{
-			// 2004. 10. 3... 
-			// _ASSERT( pHeadNODE == pSendDATA->m_pNODE ); 에서 오류 발생...
-			// m_SendList.GetNodeCount() == 0인상태에서 이리로 들어 와서 뻑~~~
-			// this->m_iSocketIDX = 0이고, pSendDATA->m_dwIOBytes = 0, pSendDATA->m_pCPacket->GetLength()=10 이었지만
-			// 아래 pSendDATA->m_dwIOBytes == (WORD)pSendDATA->m_pCPacket->GetLength() 조건을 통과했다.
-			// 1. 동시에 여러 워커 쓰래드에서 IO발생
-			// 2. 다른 워커쓰레드에서 소켓 종료 => m_SendList초기화 됨( 현재 pSendDATA가 Pool에 반납됨 )
-			// 3. 현재 워커쓰레드에서 이 함수로 접근pSendDATA->m_dwIOBytes == (WORD)pSendDATA->m_pCPacket->GetLength() 조건통과.
-			// 4. 다른 소켓에의해 pSendDATA가 할당, 최기화됨.
-			// 5. 현재 워커쓰레드 뻑~~~
-			m_csSendQ.Unlock();
-			return false;
-		}
+			assert(pSendNODE->m_dwIOBytes == 0);
 
-		this->m_bWritable = true;
-		if(pSendDATA->m_dwIOBytes == pSendDATA->m_pCPacket->GetLength()) // 전체 전송 완료..
-		{
-			// ** 아래 라인에서 m_SendList에서 pSendNode를 삭제하는 과정에서
-			//    오류가 난것은 pUSER가 이미 접속종료되어 ClearIOList() 함수를
-			//    실행하여 m_SendList가 이미 비어있기 때문이다.
-			tagIO_DATA *pHeadNODE = m_SendList.front().get();
-			assert(pHeadNODE == pSendDATA);
-
-			m_SendList.pop();
-
-			tagIO_DATA *pSendNODE = m_SendList.size() > 0 ? m_SendList.front().get() : nullptr;
-			if(pSendNODE)
+			if(!this->Send_Continue(pSendNODE))
 			{
-				assert(pSendNODE->m_dwIOBytes == 0);
+				return false;
+			}
+		}
+	}
+	else
+	{
+		if(pSendDATA->m_dwIOBytes < pSendDATA->m_pCPacket->GetLength()) // 부분 전송됨..
+		{
+			if(!this->Send_Continue(pSendDATA))
+			{
 
-				if(!this->Send_Continue(pSendNODE))
-				{
-					m_csSendQ.Unlock();
-					return false;
-				}
+				return false;
 			}
 		}
 		else
 		{
-			if(pSendDATA->m_dwIOBytes < pSendDATA->m_pCPacket->GetLength()) // 부분 전송됨..
-			{
-				if(!this->Send_Continue(pSendDATA))
-				{
-					m_csSendQ.Unlock();
-					return false;
-				}
-			}
-			else
-			{
-				assert(false);
-			}
+			assert(false);
 		}
 	}
-	m_csSendQ.Unlock();
 
 	return true;
 }

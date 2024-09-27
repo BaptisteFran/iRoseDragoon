@@ -40,18 +40,14 @@ void CLS_Server::Inc_UserCNT ()
     m_iCurUserCNT ++;
     if ( m_iCurUserCNT > m_iMaxUserCNT ) {
         m_iMaxUserCNT = m_iCurUserCNT;
-		this->LockSOCKET ();
 		if ( this->m_pSrvListITEM ) {
 			SHO_LS::GetInstance()->ExeAPI()->SetListItemINT( this->m_pSrvListITEM, LIST_COL_MAX_USERS, m_iMaxUserCNT );
 		}
-		this->UnlockSOCKET ();
     }
 
-	this->LockSOCKET ();
 	if ( this->m_pSrvListITEM ) {
 		SHO_LS::GetInstance()->ExeAPI()->SetListItemINT( this->m_pSrvListITEM, LIST_COL_CUR_USERS, m_iCurUserCNT );
 	}
-	this->UnlockSOCKET ();
 
 	g_pListSERVER->m_iCurUserCNT ++;
 	if ( g_pListSERVER->m_iCurUserCNT > g_pListSERVER->m_iMaxUserCNT ) {
@@ -70,11 +66,10 @@ void CLS_Server::Dec_UserCNT ()
 	SHO_LS::GetInstance()->ExeAPI()->SetStatusBarTEXT( 0, g_pListSERVER->m_szStatusSTR );
 
 	m_iCurUserCNT --;
-	this->LockSOCKET ();
+
 	if ( this->m_pSrvListITEM ) {
 		SHO_LS::GetInstance()->ExeAPI()->SetListItemINT( this->m_pSrvListITEM, LIST_COL_CUR_USERS, m_iCurUserCNT );
 	}
-	this->UnlockSOCKET ();
 }
 
 
@@ -168,9 +163,9 @@ bool CLS_Server::Recv_zws_SERVER_INFO (t_PACKET *pPacket)
     g_LOG.CS_ODS (0xffff, "Start World SERVER :: %s / %s / %d\n", szServerName, m_ServerIP.Get(), this->m_wListenPORT );
 
 	DWORD dwRight = 0;	// TODO::
-	this->LockSOCKET();
+
 	this->m_pSrvListITEM = SHO_LS::ExeAPI()->AddWorldITEM( this, szServerName, this->m_IP.Get(), this->m_wListenPORT, dwRight );
-	this->UnlockSOCKET();
+
     return true;
 }
 
@@ -254,11 +249,9 @@ bool CLS_Server::Recv_wls_CHANNEL_LIST (t_PACKET *pPacket)
 	this->m_csLIST.Unlock ();
 
 	// 채널 갯수...
-	this->LockSOCKET ();
 	if ( this->m_pSrvListITEM ) {
 		SHO_LS::GetInstance()->ExeAPI()->SetListItemINT( this->m_pSrvListITEM, LIST_COL_CHANNELS, pPacket->m_wls_CHANNEL_LIST.m_btChannelCNT );
 	}
-	this->UnlockSOCKET ();
 
 	return true;
 }
