@@ -47,13 +47,21 @@ public:
 	{
 		std::lock_guard<std::mutex> guard(lock);
 
-		size_t const x = lastFree.first, const y = lastFree.second;
+		size_t const x = lastFree.first, y = lastFree.second;
 
 		if(blocks[x].FreeAt(y))
 		{
 			++size;
 			blocks[x].freeList[y] = 0;
-			return new (blocks[x].data[y].memory) t_DATA();
+			t_DATA *ret = new (blocks[x].data[y].memory) t_DATA();
+
+			g_LOG.CS_ODS(
+				0xffff,
+				"$$$ Notice:: Pool[ %s ] Allocating: 0x%p.\n",
+				poolName.Get(),
+				ret);
+
+			return ret;
 		}
 
 		for(size_t i = x; i < blocks.size(); ++i)
@@ -74,7 +82,15 @@ public:
 				++size;
 				*it = 0;
 				size_t const idx = std::distance(chunk.freeList.begin(), it);
-				return new (chunk.data[idx].memory) t_DATA();
+				t_DATA *ret = new (chunk.data[idx].memory) t_DATA();
+
+				g_LOG.CS_ODS(
+					0xffff,
+					"$$$ Notice:: Pool[ %s ] Allocating: 0x%p.\n",
+					poolName.Get(),
+					ret);
+
+				return ret;
 			}
 		}
 
@@ -84,7 +100,15 @@ public:
 			Grow(blockSize);
 			++size;
 			blocks[lastEnd].freeList[0] = 0;
-			return new (blocks[lastEnd].data[0].memory) t_DATA();
+			t_DATA *ret = new (blocks[lastEnd].data[0].memory) t_DATA();
+
+			g_LOG.CS_ODS(
+				0xffff,
+				"$$$ Notice:: Pool[ %s ] Allocating: 0x%p.\n",
+				poolName.Get(),
+				ret);
+
+			return ret;
 		}
 		catch(std::bad_alloc &e)
 		{
@@ -100,6 +124,12 @@ public:
 	void Pool_Free(t_DATA *pDATA)
 	{
 		std::lock_guard<std::mutex> guard(lock);
+
+		g_LOG.CS_ODS(
+			0xffff,
+			"$$$ Notice:: Pool[ %s ] Deallocating: 0x%p.\n",
+			poolName.Get(),
+			pDATA);
 
 		unsigned char *memory = reinterpret_cast<unsigned char*>(pDATA);
 		DataBlock *block = reinterpret_cast<DataBlock *>(memory);
@@ -138,7 +168,8 @@ private:
 	struct DataBlock
 	{
 		DataBlock(size_t parentIdx)
-			: parentIdx(parentIdx)
+			: memory()
+			, parentIdx(parentIdx)
 		{
 		}
 
@@ -167,6 +198,7 @@ private:
 
 		bool FreeAt(size_t idx)
 		{
+			assert(idx < freeList.size());
 			return freeList[idx];
 		}
 
