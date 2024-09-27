@@ -106,9 +106,6 @@ void CUserLIST::DeleteUSER (classUSER *pUSER, BYTE btLogOutMODE)
 	g_pChatROOMs->LeftUSER ( pUSER );
 #endif
 
-	// ZoneThread에서 바로 호출되어 올경우 소켓 닫고 삭제하기..
-	this->Del_SOCKET( pUSER->m_iSocketIDX );
-
 	// delete Character from Hash table...
 	m_csHashCHAR.Lock ();
 	if ( pUSER->m_HashCHAR ) {
